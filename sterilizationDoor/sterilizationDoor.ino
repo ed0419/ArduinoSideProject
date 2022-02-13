@@ -1,10 +1,16 @@
 #include "FastLED.h"            // 此示例程序需要使用FastLED库
+#include<WiFi.h>
+#include <HTTPClient.h>
 #define NUM_LEDS 183          // LED灯珠数量
 #define LED_DT 13               // Arduino输出控制信号引脚
 #define LED_TYPE WS2812         // LED灯带型号
 #define COLOR_ORDER GRB         // RGB灯珠中红色、绿色、蓝色LED的排列顺序
 uint8_t max_bright = 30;       // LED亮度控制变量，可使用数值为 0 ～ 255， 数值越大则光带亮度越高
 CRGB leds[NUM_LEDS];            // 建立光带leds
+
+const char ssid[]="WiFi網路名稱"; 
+const char pwd[]="WiFi密碼"; 
+const char* serverName = "http://210.70.74.222:30008/api/values/AddStuEntry";
 
 uint8_t stu_count = 0;
 char stu_id[6] = {0,0,0,0,0,0};
@@ -103,6 +109,20 @@ void setup(){
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   pinMode(motorPin, OUTPUT);
+  //WIFI Section
+  WiFi.mode(WIFI_STA); //設置WiFi模式
+  WiFi.begin(ssid,pwd);
+  Serial.print("WiFi connecting");
+  while(WiFi.status()!=WL_CONNECTED){
+    Serial.print(".");
+    delay(500);   
+  }
+  Serial.println("");
+  Serial.print("IP位址:");
+  Serial.println(WiFi.localIP()); //讀取IP位址
+  Serial.print("WiFi RSSI:");
+  Serial.println(WiFi.RSSI()); //讀取WiFi強度
+  
   LEDS.addLeds<LED_TYPE, LED_DT, COLOR_ORDER>(leds, NUM_LEDS);  // 初始化光带  
   FastLED.setBrightness(max_bright);// 设置光带亮度
   let_green();
@@ -118,19 +138,29 @@ void loop(){
     //Serial.print(stu_count);
     
     if( key!='#' && key!='*' && stu_count>=0 && stu_count<7){
-      last_tmp = millis()
-      if (last_tmp - lastPress > 2000){
-        stu_count = 1;
-        
+      last_tmp = millis();
+      if (last_tmp - lastPress < 3000){
+        stu_count = 0;
+        Serial.println("Timeout Clean I/O");
       }else{
         stu_count++;
+        lastPress = millis();
       }
-      last 
-      stu_count ++;
       stu_id[stu_count] = key; 
       if(stu_count >= 6){
         let_red(10);  
         digitalWrite(motorPin, 1);
+        String mystu_id = String(stu_id);
+        char PostData;
+        if(WiFi.status()== WL_CONNECTED){
+          WiFiClient client;
+          HTTPClient http;
+          http.begin(client, serverName);
+          http.addHeader("Content-Type", "application/json");
+          sprintf(PostData,"{\"api_key\":%s,\"door_id\":%s,\"stu_id\":%s}","thisisakey","A01",mystu_id)
+          int httpResponseCode = http.POST(PostData);
+          Serial.println(httpResponseCode);
+        }
         stu_count = 0;
         for(int j=0;j<6;j++){
           //Serial.print(stu_id[j]);
