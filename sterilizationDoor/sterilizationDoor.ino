@@ -8,8 +8,8 @@
 uint8_t max_bright = 30;       // LED亮度控制变量，可使用数值为 0 ～ 255， 数值越大则光带亮度越高
 CRGB leds[NUM_LEDS];            // 建立光带leds
 
-const char ssid[]="WiFi網路名稱"; 
-const char pwd[]="WiFi密碼"; 
+const char ssid[]="TCIVS_CSE_IoT"; 
+const char pwd[]="MyPassW0rd"; 
 const char* serverName = "http://210.70.74.222:30008/api/values/AddStuEntry";
 
 uint8_t stu_count = 0;
@@ -151,13 +151,13 @@ void loop(){
         let_red(10);  
         digitalWrite(motorPin, 1);
         String mystu_id = String(stu_id);
-        char PostData;
+        char *PostData;
         if(WiFi.status()== WL_CONNECTED){
           WiFiClient client;
           HTTPClient http;
           http.begin(client, serverName);
           http.addHeader("Content-Type", "application/json");
-          sprintf(PostData,"{\"api_key\":%s,\"door_id\":%s,\"stu_id\":%s}","thisisakey","A01",mystu_id)
+          sprintf(PostData,"{\"api_key\":%s,\"door_id\":%s,\"stu_id\":%s}","thisisakey","A01",mystu_id);
           int httpResponseCode = http.POST(PostData);
           Serial.println(httpResponseCode);
         }
