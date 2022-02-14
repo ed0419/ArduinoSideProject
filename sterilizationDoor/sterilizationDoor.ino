@@ -10,7 +10,7 @@ CRGB leds[NUM_LEDS];            // 建立光带leds
 
 const char ssid[]="TCIVS_CSE_IoT"; 
 const char pwd[]="MyPassW0rd"; 
-const char* serverName = "http://210.70.74.222:30008/api/values/AddStuEntry";
+const char* serverName = "http://210.70.74.222:30008/door/api/values/AddStuEntry";
 
 uint8_t stu_count = 0;
 char stu_id[6] = {0,0,0,0,0,0};
@@ -99,7 +99,7 @@ void stopall(){
 }
 
 void setup(){
-  //Serial.begin(115200);
+  Serial.begin(115200);
   for(int i = 0; i<4; i++){
   //設定COLUMNS為輸入且為PULL UP
   pinMode(colPins[i],INPUT_PULLUP);
@@ -131,52 +131,56 @@ void setup(){
 
 void loop(){
   key = keyScan();
-  ultra_sensor();
-  if(key != 'X'){
-    //Serial.print("key = ");
-    //Serial.println(key);
-    //Serial.print(stu_count);
-    
-    if( key!='#' && key!='*' && stu_count>=0 && stu_count<7){
-      last_tmp = millis();
-      if (last_tmp - lastPress < 3000){
-        stu_count = 0;
-        Serial.println("Timeout Clean I/O");
-      }else{
-        stu_count++;
-        lastPress = millis();
-      }
-      stu_id[stu_count] = key; 
-      if(stu_count >= 6){
-        let_red(10);  
-        digitalWrite(motorPin, 1);
-        String mystu_id = String(stu_id);
-        char *PostData;
-        if(WiFi.status()== WL_CONNECTED){
-          WiFiClient client;
-          HTTPClient http;
-          http.begin(client, serverName);
-          http.addHeader("Content-Type", "application/json");
-          sprintf(PostData,"{\"api_key\":%s,\"door_id\":%s,\"stu_id\":%s}","thisisakey","A01",mystu_id);
-          int httpResponseCode = http.POST(PostData);
-          Serial.println(httpResponseCode);
-        }
-        stu_count = 0;
-        for(int j=0;j<6;j++){
-          //Serial.print(stu_id[j]);
-        }
-        //Serial.println("...");  
-      }
-    }
-    else if (key=='#'){
+//  ultra_sensor();
+  if(key == 'X') return;
+  Serial.print("key = ");
+  Serial.println(key);
+  Serial.print(stu_count);
+  
+  if( key!='#' && key!='*' && stu_count>=0 && stu_count<7){
+    last_tmp = millis();
+    if (last_tmp - lastPress > 3000){
       stu_count = 0;
+      Serial.println("Timeout Clean I/O");
     }
-    else if (key == '*'){
-      stopall();
+    lastPress = last_tmp;
+    stu_id[stu_count] = key; 
+    stu_count += 1;
+    if(stu_count >= 6){
+      let_red(10);  
+      digitalWrite(motorPin, 1);
+      String tmp = "";
+      for (auto i : stu_id){
+        tmp+= i;
+      }
+      char PostData[500];
+      if(WiFi.status()== WL_CONNECTED){
+        WiFiClient client;
+        HTTPClient http;
+        http.begin(client, serverName);
+        http.addHeader("Content-Type", "application/json");
+        sprintf(PostData,"{\"api_key\":\"%s\",\"door_id\":\"%s\",\"stu_id\":\"%s\"}","thisisatestkey","A01",tmp.c_str());
+        Serial.println(PostData);
+        int httpResponseCode = http.POST(PostData);
+        Serial.println(httpResponseCode);
+      }
+      stu_count = 0;
+      for(int j=0;j<6;j++){
+        Serial.print(stu_id[j]);
+      }
+        Serial.println("...");  
     }
+
   }
-  if (distance <= 70){
+  else if (key=='#'){
+    stu_count = 0;
+  }
+  else if (key == '*'){
     stopall();
+  }
+  
+  if (distance <= 70){
+    //stopall();
   }
 
 
