@@ -1,15 +1,24 @@
 #include "FastLED.h"            // 此示例程序需要使用FastLED库
-#include<WiFi.h>
+#include <WiFi.h>
 #include <HTTPClient.h>
+#include <LiquidCrystal_I2C.h>
 #define NUM_LEDS 183          // LED灯珠数量
-#define LED_DT 0               // Arduino输出控制信号引脚
+#define LED_DT 13               // Arduino输出控制信号引脚
 #define LED_TYPE WS2812         // LED灯带型号
 #define COLOR_ORDER GRB         // RGB灯珠中红色、绿色、蓝色LED的排列顺序
 uint8_t max_bright = 30;       // LED亮度控制变量，可使用数值为 0 ～ 255， 数值越大则光带亮度越高
 CRGB leds[NUM_LEDS];            // 建立光带leds
-https://youyouyou.pixnet.net/blog/post/120275992-%E7%AC%AC%E4%BA%8C%E5%8D%81%E7%AF%87-esp32-%E7%89%B9%E6%AE%8A%E6%87%89%E7%94%A8%EF%BC%9A%E5%A4%9A%E5%9F%B7%E8%A1%8C%E7%B7%92
-const char ssid[]="TCIVS_CSE_IoT"; 
-const char pwd[]="MyPassW0rd"; 
+
+bool SendData = false;
+TaskHandle_t doTheUpload;
+
+String tmpa = "";
+int lcdColumns = 16;
+int lcdRows = 2;
+LiquidCrystal_I2C lcd(0x20, lcdColumns, lcdRows);  
+
+const char ssid[]="Nina"; 
+const char pwd[]="0931257335"; 
 const char* serverName = "http://210.70.74.222:30008/door/api/values/AddStuEntry";
 
 uint8_t stu_count = 0;
@@ -39,7 +48,7 @@ char keys[ROWS][COLS] ={ //硬鍵盤對應輸出字元
 {'A' , 'B' , 'C' , 'D' }
 };
 byte rowPins[ROWS] = {32,33,25,26}; //列1~4的PIN腳
-byte colPins[COLS] = {27,14,12,13}; //行1~4的PIN腳
+byte colPins[COLS] = {27,14,12,0}; //行1~4的PIN腳
 //掃描碼，每掃一次僅有一個為＂0"
 byte scanCode[ROWS][COLS]={
 {0,1,1,1},
@@ -70,6 +79,60 @@ for(int i=0; i<4; i++){
     return 'X'; //若無任何按鍵盤被按下，則返回字元＂X"
 }
 
+void doTheUpload_senddata(void * pvParameters ) {
+  for (;;) {
+    if(SendData){
+      Serial.println("GOGO Upload");
+      String tmp = "";
+      for (auto i : stu_id){
+        tmp+= i;
+      }
+      char PostData[500];
+      if(WiFi.status()== WL_CONNECTED){
+        WiFiClient client;
+        HTTPClient http;
+        http.begin(client, serverName);
+        http.addHeader("Content-Type", "application/json");
+        sprintf(PostData,"{\"api_key\":\"%s\",\"door_id\":\"%s\",\"stu_id\":\"%s\"}","thisisatestkey","A01",tmp.c_str());
+        Serial.println(PostData);
+        int httpResponseCode = http.POST(PostData);
+        Serial.println(httpResponseCode);
+        http.end();
+
+        if(httpResponseCode == 200){
+          Serial.println("OK Send");
+        }
+        else{
+          Serial.println("Faild Send");
+        }
+
+        SendData = false;
+        http.end();
+      }
+    }
+    
+    else{
+      delay(1);
+    }
+
+  }
+}
+
+void lcd_current(char key){
+  //lcd.setCursor(0, 0);
+  //lcd.print("Pls enter STUID");
+
+  
+  lcd.setCursor(0, 0);
+  lcd.print("You Have Entered : ");
+  tmpa += key;
+  lcd.setCursor(0, 1);
+  Serial.println("UC");
+  Serial.println(tmpa);
+  lcd.print(tmpa);
+
+}
+
 void let_green(){
   fill_solid(leds, NUM_LEDS, CRGB::Green);
   FastLED.show();
@@ -84,22 +147,24 @@ void let_red(uint8_t dms){
 
 void ultra_sensor(){
   digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
+  delayMicroseconds(1);
   digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
+  delayMicroseconds(5);
   digitalWrite(trigPin, LOW);
   duration = pulseIn(echoPin, HIGH); 
   distance = duration*0.034/2;
   //Serial.print("Distance: ");
   //Serial.print(distance);
   //Serial.println("cm");
-  delay(20);
+  delay(1);
 }
 
 void stopall(){
     let_green();
     digitalWrite(motorPin, 0);
     stu_count = 0;
+    lcd.clear();
+    tmpa = "";
 }
 
 void setup(){
@@ -129,13 +194,34 @@ void setup(){
   
   LEDS.addLeds<LED_TYPE, LED_DT, COLOR_ORDER>(leds, NUM_LEDS);  // 初始化光带  
   FastLED.setBrightness(max_bright);// 设置光带亮度
+
+  // initialize LCD
+  lcd.init();
+  // turn on LCD backlight                      
+  lcd.backlight();
+
+
+  
   let_green();
   digitalWrite(motorPin, 0);
+  //在核心0啟動任務1
+  xTaskCreatePinnedToCore(
+  doTheUpload_senddata, /*任務實際對應的Function*/
+  "doTheUpload", /*任務名稱*/
+  10000, /*堆疊空間*/
+  NULL, /*無輸入值*/
+  0, /*優先序0*/
+  &doTheUpload, /*對應的任務變數位址*/
+  1); /*指定在核心0執行 */
 }
 
 void loop(){
   key = keyScan();
-//  ultra_sensor();
+  ultra_sensor();
+  if (distance <= 55){
+    Serial.println(distance);
+    stopall();
+  }
   if(key == 'X') return;
   Serial.print("key = ");
   Serial.println(key);
@@ -150,25 +236,14 @@ void loop(){
     lastPress = last_tmp;
     stu_id[stu_count] = key; 
     stu_count += 1;
+    lcd_current(key);
     if(stu_count >= 6){
       let_red(10);  
       digitalWrite(motorPin, 1);
-      String tmp = "";
-      for (auto i : stu_id){
-        tmp+= i;
-      }
-      char PostData[500];
-      if(WiFi.status()== WL_CONNECTED){
-        WiFiClient client;
-        HTTPClient http;
-        http.begin(client, serverName);
-        http.addHeader("Content-Type", "application/json");
-        sprintf(PostData,"{\"api_key\":\"%s\",\"door_id\":\"%s\",\"stu_id\":\"%s\"}","thisisatestkey","A01",tmp.c_str());
-        Serial.println(PostData);
-        int httpResponseCode = http.POST(PostData);
-        Serial.println(httpResponseCode);
-      }
+      SendData = true;
       stu_count = 0;
+      lcd.clear();
+      tmpa = "";
       for(int j=0;j<6;j++){
         Serial.print(stu_id[j]);
       }
@@ -177,15 +252,25 @@ void loop(){
 
   }
   else if (key=='#'){
-    stu_count = 0;
+    if(stu_count != 0){
+      stu_count = stu_count - 1;
+      tmpa = "";
+      for(int k;k<stu_count-1;k++){
+        tmpa += stu_id[k];
+      }
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("You Have Entered :: ");
+      lcd.setCursor(0, 1);
+      Serial.println("DEC");
+      Serial.println(tmpa);
+      lcd.print(tmpa);
+    }
+
   }
   else if (key == '*'){
     stopall();
   }
   
-  if (distance <= 70){
-    //stopall();
-  }
-
 
 }
