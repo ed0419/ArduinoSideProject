@@ -2,12 +2,12 @@
 #include<WiFi.h>
 #include <HTTPClient.h>
 #define NUM_LEDS 183          // LED灯珠数量
-#define LED_DT 13               // Arduino输出控制信号引脚
+#define LED_DT 0               // Arduino输出控制信号引脚
 #define LED_TYPE WS2812         // LED灯带型号
 #define COLOR_ORDER GRB         // RGB灯珠中红色、绿色、蓝色LED的排列顺序
 uint8_t max_bright = 30;       // LED亮度控制变量，可使用数值为 0 ～ 255， 数值越大则光带亮度越高
 CRGB leds[NUM_LEDS];            // 建立光带leds
-
+https://youyouyou.pixnet.net/blog/post/120275992-%E7%AC%AC%E4%BA%8C%E5%8D%81%E7%AF%87-esp32-%E7%89%B9%E6%AE%8A%E6%87%89%E7%94%A8%EF%BC%9A%E5%A4%9A%E5%9F%B7%E8%A1%8C%E7%B7%92
 const char ssid[]="TCIVS_CSE_IoT"; 
 const char pwd[]="MyPassW0rd"; 
 const char* serverName = "http://210.70.74.222:30008/door/api/values/AddStuEntry";
@@ -26,14 +26,20 @@ double distance;
 const byte ROWS =4; //設定列數為4
 const byte COLS = 4; //設定行數為4
 char key;
-char keys[ROWS][COLS] ={ //鍵盤對應輸出字元
-{'1' , '2' , '3' , 'A' },
-{'4' , '5' , '6' , 'B' },
-{'7' , '8' , '9' , 'C' },
-{'*' , '0' , '#' , 'D' }
+//char keys[ROWS][COLS] ={ //軟鍵盤對應輸出字元
+//{'1' , '2' , '3' , 'A' },
+//{'4' , '5' , '6' , 'B' },
+//{'7' , '8' , '9' , 'C' },
+//{'*' , '0' , '#' , 'D' }
+//};
+char keys[ROWS][COLS] ={ //硬鍵盤對應輸出字元
+{'1' , '4' , '7' , '*' },
+{'2' , '5' , '8' , '0' },
+{'3' , '6' , '9' , '#' },
+{'A' , 'B' , 'C' , 'D' }
 };
 byte rowPins[ROWS] = {32,33,25,26}; //列1~4的PIN腳
-byte colPins[COLS] = {27,14,12,0}; //行1~4的PIN腳
+byte colPins[COLS] = {27,14,12,13}; //行1~4的PIN腳
 //掃描碼，每掃一次僅有一個為＂0"
 byte scanCode[ROWS][COLS]={
 {0,1,1,1},
@@ -41,8 +47,6 @@ byte scanCode[ROWS][COLS]={
 {1,1,0,1},
 {1,1,1,0}
 };
-
-
 
 char keyScan(){ 
   //鍵盤掃描函數
@@ -102,9 +106,9 @@ void setup(){
   Serial.begin(115200);
   for(int i = 0; i<4; i++){
   //設定COLUMNS為輸入且為PULL UP
-  pinMode(colPins[i],INPUT_PULLUP);
+    pinMode(colPins[i],INPUT_PULLUP);
   //設定ROWS為輸出，作為輸出掃描碼PIN腳
-  pinMode(rowPins[i], OUTPUT);
+    pinMode(rowPins[i], OUTPUT);
   }
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
