@@ -17,8 +17,8 @@ int lcdColumns = 16;
 int lcdRows = 2;
 LiquidCrystal_I2C lcd(0x20, lcdColumns, lcdRows);  
 
-const char ssid[]="Nina"; 
-const char pwd[]="0931257335"; 
+const char ssid[]="EdNetwork"; 
+const char pwd[]="asd12345678"; 
 const char* serverName = "http://210.70.74.222:30008/door/api/values/AddStuEntry";
 
 uint8_t stu_count = 0;
@@ -48,7 +48,7 @@ char keys[ROWS][COLS] ={ //硬鍵盤對應輸出字元
 {'A' , 'B' , 'C' , 'D' }
 };
 byte rowPins[ROWS] = {32,33,25,26}; //列1~4的PIN腳
-byte colPins[COLS] = {27,14,12,0}; //行1~4的PIN腳
+byte colPins[COLS] = {27,14,12,35}; //行1~4的PIN腳
 //掃描碼，每掃一次僅有一個為＂0"
 byte scanCode[ROWS][COLS]={
 {0,1,1,1},
