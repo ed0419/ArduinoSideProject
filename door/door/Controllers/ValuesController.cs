@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Web.Http;
 using System.Data.SqlClient;
 using System.Data;
+using Newtonsoft.Json;
 
 
 namespace door.Controllers
@@ -39,29 +40,35 @@ namespace door.Controllers
                 Status = "Not Vaild API_KEY",
                 ID = ""
             };
-            if (inputData.api_key == "thisisatestkey")
-            {
-                SqlConnection sqlc = new SqlConnection("Data Source=gg60.mc2021.net;Persist Security Info=True;Initial Catalog = entryLog;User ID=sa;Password=ovh1024768@");
-                sqlc.Open();
-                SqlCommand query = new SqlCommand("insert into logs(STU_ID,TIME,DOOR_ID) values(@P0,@P1,@P2)", sqlc);
-                query.Parameters.AddWithValue("@P0", inputData.stu_id);
-                DateTimeOffset timestamp = DateTimeOffset.Now;
-                query.Parameters.AddWithValue("@P1", timestamp);
-                query.Parameters.AddWithValue("@P2", inputData.door_id);
-                query.ExecuteNonQuery();
-                response = new
-                {
-                Status = "OK Got Your ID",
-                    ID = ""+timestamp
-                };
+            if (inputData.Length == 6){
+
             }
-            else
-            {
-                response = new
+            else{
+                JObject j_data = JObject.Parse(inputData);
+                if (j_data.api_key == "thisisatestkey")
                 {
-                    Status = "Not Vaild API_KEY",
-                    ID = ""
-                };
+                    SqlConnection sqlc = new SqlConnection("Data Source=gg60.mc2021.net;Persist Security Info=True;Initial Catalog = entryLog;User ID=sa;Password=ovh1024768@");
+                    sqlc.Open();
+                    SqlCommand query = new SqlCommand("insert into logs(STU_ID,TIME,DOOR_ID) values(@P0,@P1,@P2)", sqlc);
+                    query.Parameters.AddWithValue("@P0", j_data.stu_id);
+                    DateTimeOffset timestamp = DateTimeOffset.Now;
+                    query.Parameters.AddWithValue("@P1", timestamp);
+                    query.Parameters.AddWithValue("@P2", j_data.door_id);
+                    query.ExecuteNonQuery();
+                    response = new
+                    {
+                    Status = "OK Got Your ID",
+                        ID = ""+timestamp
+                    };
+                }
+                else
+                {
+                    response = new
+                    {
+                        Status = "Not Vaild API_KEY",
+                        ID = ""
+                    };
+                }
             }
 
             return response;
