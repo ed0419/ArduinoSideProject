@@ -33,7 +33,7 @@ namespace door.Controllers
             public String door_id;
             public String stu_id;
         }
-        public object AddStuEntry([FromBody] input inputData)
+        public object AddStuEntry(String inputData)
         {
             var response = new {
                 Status = "Not Vaild API_KEY",

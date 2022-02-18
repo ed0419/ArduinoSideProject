@@ -89,6 +89,7 @@ for(int i=0; i<4; i++){
 void doTheUpload_senddata(void * pvParameters ) {
   for (;;) {
     if(SendData){
+      int httpResponseCode = 0;
       Serial.println("GOGO Upload");
       if(WiFi.status()== WL_CONNECTED){
         WiFiClient client;
@@ -102,9 +103,12 @@ void doTheUpload_senddata(void * pvParameters ) {
           }
           sprintf(PostData,"{\"api_key\":\"%s\",\"door_id\":\"%s\",\"stu_id\":\"%s\"}","thisisatestkey","A01",tmp.c_str());
           Serial.println(PostData);
-          int httpResponseCode = http.POST(PostData);
+          httpResponseCode = http.POST(PostData);
         }
-        int httpResponseCode = http.POST(readStrings);
+        else{
+          sprintf(PostData,"{\"api_key\":\"%s\",\"door_id\":\"%s\",\"stu_id\":\"%s\"}","thisisatestkey","A01",readStrings);
+          httpResponseCode = http.POST(PostData);
+        }
         Serial.println(httpResponseCode);
         http.end();
 
