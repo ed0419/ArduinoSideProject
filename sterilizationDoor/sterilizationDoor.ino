@@ -6,9 +6,15 @@
 #define LED_DT 13               // Arduino输出控制信号引脚
 #define LED_TYPE WS2812         // LED灯带型号
 #define COLOR_ORDER GRB         // RGB灯珠中红色、绿色、蓝色LED的排列顺序
+#define RXD2 16
+#define TXD2 17
+char c;
+String readStrings;
+bool keyBoard = true;
 uint8_t max_bright = 30;       // LED亮度控制变量，可使用数值为 0 ～ 255， 数值越大则光带亮度越高
-CRGB leds[NUM_LEDS];            // 建立光带leds
+CRGB leds[NUM_LEDS]; // 建立光带leds
 
+char PostData[500];
 bool SendData = false;
 TaskHandle_t doTheUpload;
 
@@ -17,8 +23,9 @@ int lcdColumns = 16;
 int lcdRows = 2;
 LiquidCrystal_I2C lcd(0x20, lcdColumns, lcdRows);  
 
-const char ssid[]="EdNetwork"; 
-const char pwd[]="asd12345678"; 
+
+const char ssid[]="Nina"; 
+const char pwd[]="0931257335"; 
 const char* serverName = "http://210.70.74.222:30008/door/api/values/AddStuEntry";
 
 uint8_t stu_count = 0;
@@ -83,19 +90,21 @@ void doTheUpload_senddata(void * pvParameters ) {
   for (;;) {
     if(SendData){
       Serial.println("GOGO Upload");
-      String tmp = "";
-      for (auto i : stu_id){
-        tmp+= i;
-      }
-      char PostData[500];
       if(WiFi.status()== WL_CONNECTED){
         WiFiClient client;
         HTTPClient http;
         http.begin(client, serverName);
         http.addHeader("Content-Type", "application/json");
-        sprintf(PostData,"{\"api_key\":\"%s\",\"door_id\":\"%s\",\"stu_id\":\"%s\"}","thisisatestkey","A01",tmp.c_str());
-        Serial.println(PostData);
-        int httpResponseCode = http.POST(PostData);
+        if(keyBoard){
+          String tmp = "";
+          for (auto i : stu_id){
+            tmp+= i;
+          }
+          sprintf(PostData,"{\"api_key\":\"%s\",\"door_id\":\"%s\",\"stu_id\":\"%s\"}","thisisatestkey","A01",tmp.c_str());
+          Serial.println(PostData);
+          int httpResponseCode = http.POST(PostData);
+        }
+        int httpResponseCode = http.POST(readStrings);
         Serial.println(httpResponseCode);
         http.end();
 
@@ -169,6 +178,7 @@ void stopall(){
 
 void setup(){
   Serial.begin(115200);
+  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   for(int i = 0; i<4; i++){
   //設定COLUMNS為輸入且為PULL UP
     pinMode(colPins[i],INPUT_PULLUP);
@@ -215,9 +225,48 @@ void setup(){
   1); /*指定在核心0執行 */
 }
 
+void trigDoor(){
+  let_red(10);  
+  digitalWrite(motorPin, 1);
+  SendData = true;
+  stu_count = 0;
+  lcd.clear();
+  tmpa = "";
+  for(int j=0;j<6;j++){
+    Serial.print(stu_id[j]);
+  }
+    Serial.println("...");  
+}
+
+void trigDoorBarCode(){
+  keyBoard = false;
+  let_red(10);  
+  digitalWrite(motorPin, 1);
+  SendData = true;
+  stu_count = 0;
+  lcd.clear();
+  tmpa = "";
+  keyBoard = true;
+}
+
+
 void loop(){
   key = keyScan();
   ultra_sensor();
+  while(Serial2.available()){
+    c = Serial2.read();
+    readStrings += c;
+  }
+  if (readStrings.length() > 0) {
+    Serial.print(readStrings.length());
+    if(readStrings.length() == 6){
+    Serial.print(readStrings);
+    trigDoorBarCode();
+    }
+    readStrings = "";
+  }
+
+  
   if (distance <= 55){
     Serial.println(distance);
     stopall();
@@ -238,16 +287,7 @@ void loop(){
     stu_count += 1;
     lcd_current(key);
     if(stu_count >= 6){
-      let_red(10);  
-      digitalWrite(motorPin, 1);
-      SendData = true;
-      stu_count = 0;
-      lcd.clear();
-      tmpa = "";
-      for(int j=0;j<6;j++){
-        Serial.print(stu_id[j]);
-      }
-        Serial.println("...");  
+      trigDoor();
     }
 
   }
